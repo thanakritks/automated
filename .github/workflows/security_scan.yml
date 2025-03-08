@@ -1,0 +1,40 @@
+name: DevSecOps Security Scan (Golang)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Go and Dependencies
+      run: |
+        go version
+        go mod init myapp || true
+        go mod tidy
+
+    - name: Run Static Code Analysis (SonarQube)
+      uses: sonarsource/sonarqube-scan-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: "https://sonarcloud.io"
+
+    - name: Build Docker Image
+      run: docker build -t my-golang-app .
+
+    - name: Run Trivy Scan (Container Security)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'my-golang-app:latest'
+        format: 'table'
+
+    - name: Run OWASP ZAP Scan (DAST)
+      uses: zaproxy/action-full-scan@v0.2.0
+      with:
+        target: ${{ secrets.OWASP_TARGET }}
